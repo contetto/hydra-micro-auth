@@ -72,24 +72,30 @@ func (a Auth) Revoke(t *auth.Token) error {
 
 // Will retrieve token from the context
 func (a Auth) FromContext(ctx context.Context) (*auth.Token, bool) {
-	return &auth.Token{}, true
+	s, ok := ctx.Value(auth.Token{}).(auth.Token)
+	return &s, ok
 }
 
 // Creates a context with the token which can be
 func (a Auth) NewContext(ctx context.Context, t *auth.Token) context.Context {
-	return ctx
+	return context.WithValue(ctx, auth.Token{}, *t)
 }
 
 // Retrieves token from headers
 // We may get back a partial token here{
-func (a Auth) FromHeader(map[string]string) (*auth.Token, bool) {
-	return &auth.Token{}, true
+func (a Auth) FromHeader(m map[string]string) (*auth.Token, bool) {
+	serializedToken, ok := m["AuthToken"]
+	if !ok {
+		return &auth.Token{}, false
+	}
+	token := FromGOB64(serializedToken)
+	return &token, true
 }
 
 // Adds token to headers
-func (a Auth) NewHeader(map[string]string, *auth.Token) map[string]string {
-	stringMap := make(map[string]string)
-	return stringMap
+func (a Auth) NewHeader(m map[string]string, t *auth.Token) map[string]string {
+	m["AuthToken"] = ToGOB64(*t)
+	return m
 }
 
 // We cache policies locally from the auth server
